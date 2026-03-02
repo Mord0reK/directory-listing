@@ -1,0 +1,4 @@
+.worktrees/
+vendor/
+.env
+content/

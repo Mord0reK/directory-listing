@@ -38,5 +38,173 @@
         </div>
     </div>
 </div>
+<script>
+(function () {
+    // ── Dropdown logic ───────────────────────────────────────────────
+    let openDropdown = null;
+
+    function closeDropdown() {
+        if (!openDropdown) return;
+        openDropdown.classList.add('hidden');
+        openDropdown.previousElementSibling?.setAttribute('aria-expanded', 'false');
+        openDropdown = null;
+    }
+
+    document.addEventListener('click', function (e) {
+        const trigger = e.target.closest('.dropdown-trigger');
+        if (trigger) {
+            e.stopPropagation();
+            const menu = trigger.nextElementSibling;
+            if (openDropdown && openDropdown !== menu) closeDropdown();
+            const isOpen = !menu.classList.contains('hidden');
+            if (isOpen) {
+                closeDropdown();
+            } else {
+                menu.classList.remove('hidden');
+                trigger.setAttribute('aria-expanded', 'true');
+                openDropdown = menu;
+            }
+            return;
+        }
+
+        // Action buttons inside dropdown
+        const download = e.target.closest('.action-download');
+        const preview  = e.target.closest('.action-preview');
+        const info     = e.target.closest('.action-info');
+
+        if (download || preview || info) {
+            const wrap = e.target.closest('.dropdown-wrap');
+            const btn  = wrap.querySelector('.dropdown-trigger');
+            const path = btn.dataset.path;
+            const name = btn.dataset.name;
+            closeDropdown();
+
+            if (download) { doDownload(path); }
+            if (preview)  { openPreview(path, name); }
+            if (info)     { openInfo(path, name); }
+            return;
+        }
+
+        closeDropdown();
+    });
+
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') {
+            closeDropdown();
+            closeModal();
+        }
+    });
+
+    // ── Modal logic ──────────────────────────────────────────────────
+    const modal      = document.getElementById('file-modal');
+    const modalTitle = document.getElementById('modal-title');
+    const modalBody  = document.getElementById('modal-body');
+    const modalClose = document.getElementById('modal-close');
+
+    function openModal(title, bodyHtml) {
+        modalTitle.textContent = title;
+        modalBody.innerHTML = bodyHtml;
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        modalClose.focus();
+    }
+
+    function closeModal() {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+        modalBody.innerHTML = '';
+    }
+
+    modalClose.addEventListener('click', closeModal);
+    modal.addEventListener('click', function (e) {
+        if (e.target === modal) closeModal();
+    });
+
+    // ── Actions ──────────────────────────────────────────────────────
+    function doDownload(path) {
+        const a = document.createElement('a');
+        a.href = '/?action=download&path=' + encodeURIComponent(path);
+        a.download = '';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+    }
+
+    async function openPreview(path, name) {
+        openModal(name, '<p class="text-muted text-sm animate-pulse">Ładowanie…</p>');
+        try {
+            const res  = await fetch('/?action=preview&path=' + encodeURIComponent(path));
+            const data = await res.json();
+            if (data.error) {
+                modalBody.innerHTML = '<p class="text-red-400 text-sm">' + escHtml(data.error) + '</p>';
+                return;
+            }
+            const pre  = document.createElement('pre');
+            const code = document.createElement('code');
+            code.className = 'language-' + data.language;
+            code.textContent = data.content;
+            pre.appendChild(code);
+            pre.className = '!m-0 !p-0 !bg-transparent !border-none overflow-x-auto text-xs';
+            const meta = document.createElement('p');
+            meta.className = 'text-[10px] text-muted mb-3 font-mono';
+            meta.textContent = data.lines + ' linii · ' + formatBytes(data.size) + ' · ' + data.language;
+            modalBody.innerHTML = '';
+            modalBody.appendChild(meta);
+            modalBody.appendChild(pre);
+            hljs.highlightElement(code);
+        } catch (err) {
+            modalBody.innerHTML = '<p class="text-red-400 text-sm">Błąd ładowania podglądu.</p>';
+        }
+    }
+
+    async function openInfo(path, name) {
+        openModal(name, '<p class="text-muted text-sm animate-pulse">Ładowanie…</p>');
+        try {
+            const res  = await fetch('/?action=info&path=' + encodeURIComponent(path));
+            const data = await res.json();
+            if (data.error) {
+                modalBody.innerHTML = '<p class="text-red-400 text-sm">' + escHtml(data.error) + '</p>';
+                return;
+            }
+            const rows = [
+                ['Nazwa',        escHtml(data.name)],
+                ['Ścieżka',      escHtml(data.path)],
+                ['Rozmiar',      formatBytes(data.size) + ' (' + data.size + ' B)'],
+                ['Typ MIME',     escHtml(data.mime)],
+                ['Rozszerzenie', escHtml(data.extension)],
+                ['Modyfikacja',  escHtml(data.mtime)],
+                ['Uprawnienia',  escHtml(data.permissions)],
+            ];
+            const html = '<table class="w-full text-sm border-collapse">'
+                + rows.map(([k, v]) =>
+                    '<tr class="border-b border-border-subtle">'
+                    + '<td class="py-2.5 pr-6 text-muted text-[11px] uppercase tracking-widest font-semibold w-36">' + k + '</td>'
+                    + '<td class="py-2.5 font-mono text-[12px] text-base">' + v + '</td>'
+                    + '</tr>'
+                ).join('')
+                + '</table>';
+            modalBody.innerHTML = html;
+        } catch (err) {
+            modalBody.innerHTML = '<p class="text-red-400 text-sm">Błąd ładowania szczegółów.</p>';
+        }
+    }
+
+    // ── Helpers ──────────────────────────────────────────────────────
+    function escHtml(str) {
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;');
+    }
+
+    function formatBytes(bytes) {
+        if (bytes === 0) return '0 B';
+        const units = ['B', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(1024));
+        return (bytes / Math.pow(1024, i)).toFixed(1) + ' ' + units[i];
+    }
+})();
+</script>
 </body>
 </html>

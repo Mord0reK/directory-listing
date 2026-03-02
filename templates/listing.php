@@ -35,7 +35,6 @@
                         <th class="pb-3 text-left">Nazwa</th>
                         <th class="pb-3 text-right w-24 hidden sm:table-cell font-mono">Rozmiar</th>
                         <th class="pb-3 text-right w-44 hidden md:table-cell font-mono">Ostatnia modyfikacja</th>
-                        <th class="pb-3 w-10" aria-hidden="true"></th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-border-subtle">
@@ -46,18 +45,14 @@
                             $sizeStr = $entry['isDir'] ? '—' : formatBytes($entry['size']);
                             $dateStr = date('Y-m-d H:i', $entry['mtime']);
                         ?>
-                        <tr class="hover:bg-bg-hover transition-all duration-200 group relative">
+                        <tr class="hover:bg-bg-hover transition-all duration-200 group relative cursor-pointer" onclick="window.location='<?= htmlspecialchars($href) ?>'">
                             <td class="py-2.5 pr-2" aria-hidden="true">
-                                <div class="transition-transform duration-200 group-hover:scale-110">
-                                    <?= $entry['icon'] ?>
-                                </div>
+                                <?= $entry['icon'] ?>
                             </td>
                             <td class="py-2.5">
-                                <a class="text-base group-hover:text-heading transition-colors <?= $entry['isDir'] ? 'font-semibold' : '' ?>"
-                                   href="<?= htmlspecialchars($href) ?>">
+                                <span class="text-base group-hover:text-heading transition-colors <?= $entry['isDir'] ? 'font-semibold' : '' ?>">
                                     <?= htmlspecialchars($entry['name']) ?>
-                                </a>
-                                <div class="absolute left-0 top-0 bottom-0 w-0.5 bg-accent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                                </span>
                             </td>
                             <td class="py-2.5 text-right text-muted hidden sm:table-cell font-mono text-[11px]">
                                 <?= $sizeStr ?>
@@ -65,40 +60,6 @@
                             <td class="py-2.5 text-right text-zinc-500 hidden md:table-cell text-[11px] font-mono">
                                 <?= $dateStr ?>
                             </td>
-                            <?php if (!$entry['isDir']): ?>
-                            <td class="py-2.5 text-right relative">
-                                <div class="dropdown-wrap relative inline-block">
-                                    <button
-                                        class="dropdown-trigger opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-bg-hover text-muted hover:text-heading"
-                                        data-path="<?= htmlspecialchars($entryPath) ?>"
-                                        data-name="<?= htmlspecialchars($entry['name']) ?>"
-                                        aria-label="Akcje dla <?= htmlspecialchars($entry['name']) ?>"
-                                        aria-haspopup="true"
-                                        aria-expanded="false"
-                                    >
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                                            <circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/>
-                                        </svg>
-                                    </button>
-                                    <div class="dropdown-menu hidden absolute right-0 top-full mt-1 z-30 bg-bg-surface border border-border rounded-xl shadow-xl py-1 min-w-[160px] text-sm" role="menu">
-                                        <button class="action-download flex items-center gap-2.5 w-full px-4 py-2 text-left text-base hover:bg-bg-hover hover:text-heading transition-colors" role="menuitem">
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                                            Pobierz
-                                        </button>
-                                        <button class="action-preview flex items-center gap-2.5 w-full px-4 py-2 text-left text-base hover:bg-bg-hover hover:text-heading transition-colors" role="menuitem">
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
-                                            Podgląd kodu
-                                        </button>
-                                        <button class="action-info flex items-center gap-2.5 w-full px-4 py-2 text-left text-base hover:bg-bg-hover hover:text-heading transition-colors" role="menuitem">
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-                                            Szczegóły
-                                        </button>
-                                    </div>
-                                </div>
-                            </td>
-                            <?php else: ?>
-                            <td class="py-2.5"></td>
-                            <?php endif; ?>
                         </tr>
                     <?php endforeach; ?>
                 </tbody>
@@ -112,15 +73,15 @@
 
     <!-- Inline README -->
     <?php if (!empty($readmeHtml)): ?>
-        <div class="mt-12 border-t border-border pt-8">
+        <div class="mt-4 border-t border-border pt-8">
             <div class="flex items-center justify-between mb-6">
                 <h2 class="text-xs font-bold text-heading uppercase tracking-widest flex items-center gap-2">
-                    <img src="/assets/icons/md.svg" width="16" height="16" aria-hidden="true" alt="" class="opacity-70 group-hover:opacity-100 transition-opacity">
+                    <i class="bi bi-filetype-md"></i>
                     README.md
                 </h2>
                 <a href="<?= htmlspecialchars('/' . ltrim(($requestPath !== '' ? $requestPath . '/' : '') . 'README.md', '/')) ?>?raw=1"
-                   class="text-[10px] uppercase font-bold tracking-widest text-muted hover:text-accent transition-colors">
-                    raw source
+                   class="text-[10px] font-bold tracking-widest text-muted hover:text-accent transition-colors">
+                    Kod źródłowy
                 </a>
             </div>
             <article class="markdown-body max-w-4xl">

@@ -1,0 +1,17 @@
+{
+    "name": "app/directory-listing",
+    "description": "PHP directory listing with Markdown rendering",
+    "type": "project",
+    "require": {
+        "php": "^8.3",
+        "league/commonmark": "^2.6"
+    },
+    "autoload": {
+        "psr-4": {
+            "App\\": "src/"
+        }
+    },
+    "config": {
+        "optimize-autoloader": true
+    }
+}

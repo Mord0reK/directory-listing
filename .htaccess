@@ -1,0 +1,29 @@
+Options -Indexes -MultiViews +FollowSymLinks
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    
+    # Serve static assets directly
+    RewriteRule ^assets/ - [L]
+    
+    # For PHP files in root, let Apache execute them
+    RewriteCond %{REQUEST_URI} \.php$
+    RewriteCond %{REQUEST_FILENAME} -f
+    RewriteRule ^ - [L]
+    
+    # For PHP files in content/ directory, rewrite to content/
+    RewriteCond %{REQUEST_URI} \.php$
+    RewriteCond %{REQUEST_URI} !^/content/
+    RewriteCond %{DOCUMENT_ROOT}/content%{REQUEST_URI} -f
+    RewriteRule ^(.*)$ content/$1 [L]
+    
+    # For everything else, route to index.php
+    RewriteRule ^ index.php [L,QSA]
+</IfModule>
+
+# Deny access to sensitive files
+<FilesMatch "\.(env|gitignore)$">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+</FilesMatch>

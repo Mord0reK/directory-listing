@@ -1,0 +1,60 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --color-bg-base: theme('colors.zinc.950');
+    --color-bg-surface: theme('colors.zinc.900');
+    --color-bg-hover: theme('colors.zinc.800 / 0.7');
+    --color-border: theme('colors.zinc.800');
+    --color-border-subtle: theme('colors.zinc.900');
+    --color-text-base: theme('colors.zinc.200');
+    --color-text-muted: theme('colors.zinc.400');
+    --color-text-heading: theme('colors.zinc.100');
+    --color-accent: theme('colors.blue.500');
+    --color-accent-hover: theme('colors.blue.400');
+  }
+}
+
+@layer components {
+  .markdown-body {
+    @apply text-[var(--color-text-base)] leading-relaxed font-sans;
+  }
+  .markdown-body h1 { @apply text-3xl font-bold text-[var(--color-text-heading)] mt-12 mb-6 border-b border-[var(--color-border)] pb-4 tracking-tight; }
+  .markdown-body h2 { @apply text-2xl font-semibold text-[var(--color-text-heading)] mt-8 mb-4 border-b border-[var(--color-border-subtle)] pb-2 tracking-tight; }
+  .markdown-body h3 { @apply text-xl font-semibold text-[var(--color-text-heading)] mt-6 mb-3; }
+  .markdown-body h4 { @apply text-lg font-semibold text-[var(--color-text-base)] mt-4 mb-2; }
+  .markdown-body p  { @apply mb-5; }
+  .markdown-body ul { @apply list-disc pl-6 mb-5 space-y-2; }
+  .markdown-body ol { @apply list-decimal pl-6 mb-5 space-y-2; }
+  .markdown-body li { @apply text-zinc-300; }
+  .markdown-body a  { @apply text-accent hover:text-accent-hover underline decoration-zinc-700 underline-offset-4 transition-colors; }
+  .markdown-body code { @apply bg-bg-surface text-accent rounded px-1.5 py-0.5 text-[0.85rem] font-mono border border-border-subtle; }
+  .markdown-body pre { @apply bg-bg-surface border border-border rounded-xl p-5 overflow-x-auto mb-6 shadow-sm; }
+  .markdown-body pre code { @apply bg-transparent p-0 border-none text-[var(--color-text-base)]; }
+  .markdown-body blockquote { @apply border-l-4 border-accent pl-5 italic text-zinc-400 my-6 bg-zinc-800/10 py-4 rounded-r-lg; }
+  .markdown-body table { @apply w-full border-collapse mb-6 text-sm overflow-hidden rounded-lg; }
+  .markdown-body th { @apply border border-border px-4 py-2 text-left text-heading bg-bg-surface font-semibold; }
+  .markdown-body td { @apply border border-border px-4 py-2 text-zinc-300; }
+  .markdown-body hr { @apply border-border my-10; }
+  .markdown-body img { @apply max-w-full rounded-xl shadow-md my-6; }
+}
+
+/* Custom transitions and refinements */
+.icon-folder { @apply opacity-80; }
+.file-icon { @apply transition-transform duration-200 group-hover:scale-110; }
+
+::-webkit-scrollbar {
+  width: 10px;
+}
+::-webkit-scrollbar-track {
+  @apply bg-bg-base;
+}
+::-webkit-scrollbar-thumb {
+  @apply bg-zinc-800 rounded-full border-2 border-bg-base hover:bg-zinc-700 transition-colors;
+}
+
+details summary::-webkit-details-marker {
+  display: none;
+}

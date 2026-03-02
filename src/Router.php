@@ -29,14 +29,6 @@ class Router
             $rawPath = '';
         }
 
-        // Handle API actions
-        $action = $_GET['action'] ?? null;
-        if ($action !== null && $action !== '') {
-            $path = $_GET['path'] ?? '';
-            $this->handleAction($action, $path);
-            return;
-        }
-
         try {
             $safeFull = $this->scanner->resolveSafe($rawPath);
         } catch (\RuntimeException $e) {
@@ -61,111 +53,6 @@ class Router
 
     // ---------------------------------------------------------------
 
-    private function handleAction(string $action, string $path): void
-    {
-        try {
-            $safeFull = $this->scanner->resolveSafe($path);
-        } catch (\RuntimeException $e) {
-            http_response_code(404);
-            header('Content-Type: application/json');
-            echo json_encode(['error' => $e->getMessage()]);
-            exit;
-        }
-
-        if (is_dir($safeFull)) {
-            http_response_code(400);
-            header('Content-Type: application/json');
-            echo json_encode(['error' => 'Cannot perform action on directory']);
-            exit;
-        }
-
-        match ($action) {
-            'download' => $this->actionDownload($safeFull),
-            'preview'  => $this->actionPreview($safeFull),
-            'info'     => $this->actionInfo($safeFull, $path),
-            default    => (function() {
-                http_response_code(404);
-                header('Content-Type: application/json');
-                echo json_encode(['error' => 'Unknown action']);
-                exit;
-            })(),
-        };
-    }
-
-    private function actionDownload(string $fullPath): void
-    {
-        $ext  = strtolower(pathinfo($fullPath, PATHINFO_EXTENSION));
-        $mime = $this->mimeType($ext);
-        header('Content-Type: ' . $mime);
-        header('Content-Length: ' . filesize($fullPath));
-        $safeName = str_replace('"', '\\"', basename($fullPath));
-        header('Content-Disposition: attachment; filename="' . $safeName . '"');
-        readfile($fullPath);
-        exit;
-    }
-
-    private function actionPreview(string $fullPath): void
-    {
-        header('Content-Type: application/json');
-        $maxSize = 1 * 1024 * 1024; // 1 MB
-        $size = filesize($fullPath);
-        if ($size > $maxSize) {
-            echo json_encode(['error' => 'File too large to preview (max 1 MB)']);
-            exit;
-        }
-        $content = file_get_contents($fullPath);
-        if ($content === false || !mb_check_encoding($content, 'UTF-8')) {
-            echo json_encode(['error' => 'Binary file cannot be previewed']);
-            exit;
-        }
-        $ext      = strtolower(pathinfo($fullPath, PATHINFO_EXTENSION));
-        $language = $this->extToLanguage($ext);
-        $lines    = substr_count($content, "\n") + 1;
-        echo json_encode([
-            'content'  => $content,
-            'language' => $language,
-            'lines'    => $lines,
-            'size'     => $size,
-        ]);
-        exit;
-    }
-
-    private function actionInfo(string $fullPath, string $requestPath): void
-    {
-        header('Content-Type: application/json');
-        $ext  = strtolower(pathinfo($fullPath, PATHINFO_EXTENSION));
-        $mime = $this->mimeType($ext);
-        $perms = substr(sprintf('%o', fileperms($fullPath)), -4);
-        echo json_encode([
-            'name'        => basename($fullPath),
-            'path'        => $requestPath,
-            'size'        => filesize($fullPath),
-            'mime'        => $mime,
-            'mtime'       => date('Y-m-d H:i:s', filemtime($fullPath)),
-            'permissions' => $perms,
-            'extension'   => $ext ?: '(none)',
-        ]);
-        exit;
-    }
-
-    private function extToLanguage(string $ext): string
-    {
-        $map = [
-            'php' => 'php', 'js' => 'javascript', 'ts' => 'typescript',
-            'py'  => 'python', 'rb' => 'ruby', 'java' => 'java',
-            'cs'  => 'csharp', 'go' => 'go', 'rs' => 'rust',
-            'cpp' => 'cpp', 'c' => 'c', 'h' => 'c',
-            'css' => 'css', 'scss' => 'scss', 'html' => 'html',
-            'xml' => 'xml', 'json' => 'json', 'yaml' => 'yaml',
-            'yml' => 'yaml', 'sql' => 'sql', 'sh'  => 'bash',
-            'bash' => 'bash', 'md' => 'markdown', 'txt' => 'plaintext',
-            'ini' => 'ini', 'toml' => 'toml', 'env' => 'plaintext',
-        ];
-        return $map[$ext] ?? 'plaintext';
-    }
-
-    // ---------------------------------------------------------------
-
     private function serveListing(string $requestPath, string $fullPath): void
     {
         $entries    = $this->scanner->scan($requestPath);
@@ -186,6 +73,8 @@ class Router
 
         $tree = $this->tree->build($requestPath);
 
+        $folderIcon = $this->icons->resolve('', true, $fullPath);
+
         // Render inline README if present
         $readmeHtml = null;
         $readmeFull = $fullPath . '/README.md';
@@ -193,7 +82,7 @@ class Router
             $readmeHtml = $this->md->renderFile($readmeFull);
         }
 
-        $data = compact('entries', 'breadcrumb', 'siteName', 'requestPath', 'parentPath', 'tree', 'readmeHtml');
+        $data = compact('entries', 'breadcrumb', 'siteName', 'requestPath', 'parentPath', 'tree', 'readmeHtml', 'folderIcon');
         $this->renderTemplate('listing', $data);
     }
 
@@ -213,7 +102,10 @@ class Router
         $treeBase = dirname(ltrim($requestPath, '/'));
         if ($treeBase === '.') $treeBase = '';
         $tree = $this->tree->build($treeBase);
-        $data = compact('html', 'breadcrumb', 'siteName', 'title', 'requestPath', 'parentPath', 'tree');
+        
+        $folderIcon = $this->icons->resolve('', true, $this->config['base_dir'] . '/' . $treeBase);
+        
+        $data = compact('html', 'breadcrumb', 'siteName', 'title', 'requestPath', 'parentPath', 'tree', 'folderIcon');
         $this->renderTemplate('markdown', $data);
     }
 
@@ -258,6 +150,7 @@ class Router
     private function mimeType(string $ext): string
     {
         $map = [
+            'html' => 'text/html',
             'txt'  => 'text/plain',
             'css'  => 'text/css',
             'js'   => 'application/javascript',

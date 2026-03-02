@@ -15,7 +15,7 @@ class Router
         $this->config  = $config;
         $this->scanner = new DirScanner($config['base_dir'], $config['hidden']);
         $this->md      = new MarkdownRenderer();
-        $this->icons   = new IconResolver($config['icons_file']);
+        $this->icons   = new IconResolver($config['icons_file'], $config['base_dir']);
         $this->tree    = new TreeBuilder($config['base_dir'], $config['hidden']);
     }
 
@@ -60,7 +60,8 @@ class Router
         $siteName   = $this->config['site_name'];
 
         foreach ($entries as &$entry) {
-            $entry['icon'] = $this->icons->resolve($entry['name'], $entry['isDir'], $fullPath);
+            $entryPath = ltrim(($requestPath !== '' ? $requestPath . '/' : '') . $entry['name'], '/');
+            $entry['icon'] = $this->icons->resolve($entry['name'], $entry['isDir'], $fullPath, $entryPath);
         }
         unset($entry);
 
@@ -72,8 +73,9 @@ class Router
         }
 
         $tree = $this->tree->build($requestPath);
+        $tree = $this->appendTreeIcons($tree);
 
-        $folderIcon = $this->icons->resolve('', true, $fullPath);
+        $folderIcon = $this->icons->resolve('', true, $fullPath, trim($requestPath, '/'));
 
         // Render inline README if present
         $readmeHtml = null;
@@ -102,11 +104,35 @@ class Router
         $treeBase = dirname(ltrim($requestPath, '/'));
         if ($treeBase === '.') $treeBase = '';
         $tree = $this->tree->build($treeBase);
+        $tree = $this->appendTreeIcons($tree);
         
-        $folderIcon = $this->icons->resolve('', true, $this->config['base_dir'] . '/' . $treeBase);
+        $folderIcon = $this->icons->resolve('', true, $this->config['base_dir'] . '/' . $treeBase, trim($treeBase, '/'));
         
         $data = compact('html', 'breadcrumb', 'siteName', 'title', 'requestPath', 'parentPath', 'tree', 'folderIcon');
         $this->renderTemplate('markdown', $data);
+    }
+
+    private function appendTreeIcons(array $tree): array
+    {
+        foreach ($tree as &$node) {
+            $parentPath = dirname($node['path']);
+            if ($parentPath === '.') {
+                $parentPath = '';
+            }
+
+            $parentDir = $parentPath === ''
+                ? $this->config['base_dir']
+                : $this->config['base_dir'] . '/' . $parentPath;
+
+            $node['icon'] = $this->icons->resolve($node['name'], true, $parentDir, $node['path']);
+
+            if (!empty($node['children'])) {
+                $node['children'] = $this->appendTreeIcons($node['children']);
+            }
+        }
+        unset($node);
+
+        return $tree;
     }
 
     private function serveRaw(string $fullPath, string $ext): void

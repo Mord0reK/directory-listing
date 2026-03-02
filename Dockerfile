@@ -44,7 +44,14 @@ RUN tailwindcss -i assets/input.css -o assets/style.css --minify
 # Ensure content dir exists and is writable
 RUN mkdir -p content && chown -R www-data:www-data content
 
+# Entrypoint: initialize custom icons config in mounted folder
+COPY docker-entrypoint.sh /usr/local/bin/directory-listing-entrypoint
+RUN chmod +x /usr/local/bin/directory-listing-entrypoint
+
 # Fix permissions
 RUN chown -R www-data:www-data /var/www/html
+
+ENTRYPOINT ["directory-listing-entrypoint"]
+CMD ["apache2-foreground"]
 
 EXPOSE 80

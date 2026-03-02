@@ -63,5 +63,6 @@
         "mov": "bi-file-earmark-play",
         "mkv": "bi-file-earmark-play"
     },
-    "custom": {}
+    "custom": {},
+    "paths": {}
 }

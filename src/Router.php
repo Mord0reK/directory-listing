@@ -31,7 +31,7 @@ class Router
 
         // Handle API actions
         $action = $_GET['action'] ?? null;
-        if ($action !== null) {
+        if ($action !== null && $action !== '') {
             $path = $_GET['path'] ?? '';
             $this->handleAction($action, $path);
             return;
@@ -83,7 +83,12 @@ class Router
             'download' => $this->actionDownload($safeFull),
             'preview'  => $this->actionPreview($safeFull),
             'info'     => $this->actionInfo($safeFull, $path),
-            default    => $this->send404('Unknown action'),
+            default    => (function() {
+                http_response_code(404);
+                header('Content-Type: application/json');
+                echo json_encode(['error' => 'Unknown action']);
+                exit;
+            })(),
         };
     }
 
@@ -93,7 +98,8 @@ class Router
         $mime = $this->mimeType($ext);
         header('Content-Type: ' . $mime);
         header('Content-Length: ' . filesize($fullPath));
-        header('Content-Disposition: attachment; filename="' . basename($fullPath) . '"');
+        $safeName = str_replace('"', '\\"', basename($fullPath));
+        header('Content-Disposition: attachment; filename="' . $safeName . '"');
         readfile($fullPath);
         exit;
     }
@@ -102,7 +108,8 @@ class Router
     {
         header('Content-Type: application/json');
         $maxSize = 1 * 1024 * 1024; // 1 MB
-        if (filesize($fullPath) > $maxSize) {
+        $size = filesize($fullPath);
+        if ($size > $maxSize) {
             echo json_encode(['error' => 'File too large to preview (max 1 MB)']);
             exit;
         }
@@ -118,7 +125,7 @@ class Router
             'content'  => $content,
             'language' => $language,
             'lines'    => $lines,
-            'size'     => filesize($fullPath),
+            'size'     => $size,
         ]);
         exit;
     }

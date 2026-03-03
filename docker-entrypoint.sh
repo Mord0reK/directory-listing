@@ -13,4 +13,13 @@ fi
 
 chmod 666 "$TARGET_CONFIG" 2>/dev/null || true
 
+CONTENT_DIR="/var/www/html/content"
+if [ -d "$CONTENT_DIR" ]; then
+    for dir in "$CONTENT_DIR"/*; do
+        if [ -d "$dir" ]; then
+            chown -R www-data:www-data "$dir"
+        fi
+    done
+fi
+
 exec "$@"

@@ -23,6 +23,13 @@ class Router
     {
         $requestUri = $_SERVER['REQUEST_URI'] ?? '/';
         $requestUri = parse_url($requestUri, PHP_URL_PATH);
+
+        // Handle webhook endpoint
+        if ($requestUri === '/_webhook/git-pull' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+            (new WebhookHandler($this->config))->handle();
+            return;
+        }
+
         $rawPath = ltrim(urldecode($requestUri), '/');
 
         if ($rawPath === '' || $rawPath === 'index.php') {

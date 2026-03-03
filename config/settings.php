@@ -12,4 +12,5 @@ return [
     'site_name'  => 'Directory Listing',
     'hidden'     => ['.', '..', '.git', '.gitignore', '.htaccess', '.dir.json'],
     'icons_file' => $iconsFile,
+    'webhook_token' => $_ENV['WEBHOOK_TOKEN'] ?? $_SERVER['WEBHOOK_TOKEN'] ?? '',
 ];

@@ -2,7 +2,7 @@ services:
   app:
     build: .
     ports:
-      - "127.0.0.1:8080:80"
+      - "8080:80"
     volumes:
       - ./Pliki:/var/www/html/content
       - ./ikony:/var/www/html/assets/icons/custom

@@ -76,7 +76,10 @@ class WebhookHandler
             exit;
         }
 
-        // 8. Execute git pull
+        // 8. Configure git safe.directory and execute git pull
+        $safeDirCmd = sprintf('git config --global --add safe.directory %s 2>&1', escapeshellarg($absolutePath));
+        exec($safeDirCmd, $safeDirOutput, $safeDirExitCode);
+
         $command = sprintf('git -C %s pull 2>&1', escapeshellarg($absolutePath));
         exec($command, $output, $exitCode);
 

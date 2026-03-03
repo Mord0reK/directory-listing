@@ -35,7 +35,7 @@ RUN ARCH=$(uname -m) && \
         echo "Unsupported architecture: $ARCH" && exit 1; \
     fi && \
     curl -sLo /usr/local/bin/tailwindcss \
-    https://github.com/tailwindlabs/tailwindcss/releases/download/v4.2.1/tailwindcss-linux-$TAILWIND_ARCH && \
+    https://github.com/tailwindlabs/tailwindcss/releases/download/v3.4.17/tailwindcss-linux-$TAILWIND_ARCH && \
     chmod +x /usr/local/bin/tailwindcss
 
 # Compile Tailwind CSS

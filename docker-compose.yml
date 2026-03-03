@@ -8,3 +8,4 @@ services:
       - ./ikony:/var/www/html/assets/icons/custom
     environment:
       APACHE_DOCUMENT_ROOT: /var/www/html
+      WEBHOOK_TOKEN: "super-tajny-sekret"

@@ -44,21 +44,43 @@ class WebhookHandler
             exit;
         }
 
-        // 5. Check path in whitelist - 403 if not present
-        $webhookPaths = $this->config['webhook_paths'] ?? [];
-        if (!isset($webhookPaths[$path])) {
-            http_response_code(403);
-            echo json_encode(['success' => false, 'error' => 'Forbidden path']);
+        // 5. Resolve path as subdirectory within base_dir (content)
+        $baseDir = $this->config['base_dir'] ?? '';
+        if ($baseDir === '') {
+            http_response_code(500);
+            echo json_encode(['success' => false, 'error' => 'Base directory not configured']);
             exit;
         }
 
-        $absolutePath = $webhookPaths[$path];
+        // 6. Prevent directory traversal attacks
+        $path = trim($path, '/');
+        if ($path === '' || str_contains($path, '..') || str_contains($path, "\0")) {
+            http_response_code(403);
+            echo json_encode(['success' => false, 'error' => 'Invalid path']);
+            exit;
+        }
 
-        // 6. Execute git pull
+        $absolutePath = realpath($baseDir . '/' . $path);
+
+        // 7. Verify the resolved path is within base_dir and exists
+        if ($absolutePath === false || !is_dir($absolutePath)) {
+            http_response_code(404);
+            echo json_encode(['success' => false, 'error' => 'Directory not found']);
+            exit;
+        }
+
+        $realBaseDir = realpath($baseDir);
+        if ($realBaseDir === false || !str_starts_with($absolutePath, $realBaseDir)) {
+            http_response_code(403);
+            echo json_encode(['success' => false, 'error' => 'Path outside base directory']);
+            exit;
+        }
+
+        // 8. Execute git pull
         $command = sprintf('git -C %s pull 2>&1', escapeshellarg($absolutePath));
         exec($command, $output, $exitCode);
 
-        // 7. Return JSON with success, exit_code, output[]
+        // 9. Return JSON with success, exit_code, output[]
         echo json_encode([
             'success'   => $exitCode === 0,
             'exit_code' => $exitCode,

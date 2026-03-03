@@ -32,7 +32,7 @@
 
     <!-- Sidebar Footer -->
     <div class="px-6 py-6 border-t border-border-subtle text-[10px] text-zinc-600 font-mono tracking-wider">
-        Wersja 1.0.1
+        Wersja 1.1.0
     </div>
 </aside>
 

@@ -1,3 +1,19 @@
+# Build stage for Tailwind CSS
+FROM node:22-alpine AS builder
+
+WORKDIR /build
+
+RUN npm install -g tailwindcss@3.4.19
+
+COPY assets/input.css ./assets/input.css
+COPY tailwind.config.js ./
+COPY templates ./templates
+COPY src ./src
+COPY index.php ./
+
+RUN npx tailwindcss -i assets/input.css -o style.css --minify
+
+# Final stage
 FROM php:8.3-apache
 
 # Install composer
@@ -22,24 +38,11 @@ COPY composer.json ./
 # Install PHP dependencies
 RUN composer install --no-dev --optimize-autoloader --no-interaction
 
-# Copy application files
+# Copy application files (except assets - handled separately)
 COPY . .
 
-# Download Tailwind CSS standalone CLI based on architecture
-RUN ARCH=$(uname -m) && \
-    if [ "$ARCH" = "x86_64" ]; then \
-        TAILWIND_ARCH="x64"; \
-    elif [ "$ARCH" = "aarch64" ]; then \
-        TAILWIND_ARCH="arm64"; \
-    else \
-        echo "Unsupported architecture: $ARCH" && exit 1; \
-    fi && \
-    curl -sLo /usr/local/bin/tailwindcss \
-    https://github.com/tailwindlabs/tailwindcss/releases/download/v3.4.17/tailwindcss-linux-$TAILWIND_ARCH && \
-    chmod +x /usr/local/bin/tailwindcss
-
-# Compile Tailwind CSS
-RUN tailwindcss -i assets/input.css -o assets/style.css --minify
+# Copy compiled Tailwind CSS from builder
+COPY --from=builder /build/style.css ./assets/style.css
 
 # Ensure content dir exists and is writable
 RUN mkdir -p content && chown -R www-data:www-data content

@@ -13,7 +13,7 @@ class Router
     public function __construct(array $config)
     {
         $this->config  = $config;
-        $this->scanner = new DirScanner($config['base_dir'], $config['hidden']);
+        $this->scanner = new DirScanner($config['base_dir'], $config['hidden'], $config['hidden_dot_exceptions'] ?? []);
         $this->md      = new MarkdownRenderer();
         $this->icons   = new IconResolver($config['icons_file'], $config['base_dir']);
         $this->tree    = new TreeBuilder($config['base_dir'], $config['hidden']);
@@ -24,11 +24,10 @@ class Router
         $requestUri = $_SERVER['REQUEST_URI'] ?? '/';
         $requestUri = parse_url($requestUri, PHP_URL_PATH);
 
-        // Handle action endpoints (preview, download, info)
         if (isset($_GET['action'])) {
             $action = $_GET['action'];
             $path = $_GET['path'] ?? '';
-            
+
             switch ($action) {
                 case 'preview':
                     $this->handlePreview($path);
@@ -43,7 +42,6 @@ class Router
             return;
         }
 
-        // Handle webhook endpoint
         if ($requestUri === '/_webhook/git-pull' && $_SERVER['REQUEST_METHOD'] === 'POST') {
             (new WebhookHandler($this->config))->handle();
             return;
@@ -58,7 +56,12 @@ class Router
         try {
             $safeFull = $this->scanner->resolveSafe($rawPath);
         } catch (\RuntimeException $e) {
-            $this->send404($e->getMessage());
+            if ($e->getCode() === 403) {
+                http_response_code(403);
+                echo '<h1>403 Forbidden</h1>';
+            } else {
+                $this->send404($e->getMessage());
+            }
             return;
         }
 
@@ -103,7 +106,6 @@ class Router
 
         $folderIcon = $this->icons->resolve('', true, $fullPath, trim($requestPath, '/'));
 
-        // Render inline README if present
         $readmeHtml = null;
         $readmeFull = $fullPath . '/README.md';
         if (file_exists($readmeFull)) {
@@ -126,14 +128,13 @@ class Router
             $parentPath = '';
         }
 
-        // For markdown pages, the requestPath is a file; the tree should highlight the parent dir
         $treeBase = dirname(ltrim($requestPath, '/'));
         if ($treeBase === '.') $treeBase = '';
         $tree = $this->tree->build($treeBase);
         $tree = $this->appendTreeIcons($tree);
-        
+
         $folderIcon = $this->icons->resolve('', true, $this->config['base_dir'] . '/' . $treeBase, trim($treeBase, '/'));
-        
+
         $data = compact('html', 'breadcrumb', 'siteName', 'title', 'requestPath', 'parentPath', 'tree', 'folderIcon');
         $this->renderTemplate('markdown', $data);
     }
@@ -229,19 +230,20 @@ class Router
                 echo json_encode(['error' => 'Cannot preview directories']);
                 return;
             }
-            $content = file_get_contents($fullPath);
+            $content  = file_get_contents($fullPath);
             $language = $this->getLanguageFromExtension($fullPath);
-            $size = filesize($fullPath);
-            $lines = count(explode("\n", $content));
-            
+            $size     = filesize($fullPath);
+            $lines    = count(explode("\n", $content));
+
             echo json_encode([
-                'content' => $content,
+                'content'  => $content,
                 'language' => $language,
-                'size' => $size,
-                'lines' => $lines
+                'size'     => $size,
+                'lines'    => $lines,
             ]);
-        } catch (\Exception $e) {
-            echo json_encode(['error' => 'Cannot read file']);
+        } catch (\RuntimeException $e) {
+            http_response_code($e->getCode() ?: 500);
+            echo json_encode(['error' => $e->getCode() === 403 ? 'Access denied' : 'Cannot read file']);
         }
     }
 
@@ -253,14 +255,14 @@ class Router
                 http_response_code(400);
                 exit;
             }
-            $ext = strtolower(pathinfo($fullPath, PATHINFO_EXTENSION));
+            $ext  = strtolower(pathinfo($fullPath, PATHINFO_EXTENSION));
             $mime = $this->mimeType($ext);
             header('Content-Type: ' . $mime);
             header('Content-Length: ' . filesize($fullPath));
             header('Content-Disposition: attachment; filename="' . basename($fullPath) . '"');
             readfile($fullPath);
-        } catch (\Exception $e) {
-            http_response_code(404);
+        } catch (\RuntimeException $e) {
+            http_response_code($e->getCode() === 403 ? 403 : 404);
         }
         exit;
     }
@@ -270,20 +272,21 @@ class Router
         header('Content-Type: application/json');
         try {
             $fullPath = $this->scanner->resolveSafe($path);
-            $ext = strtolower(pathinfo($fullPath, PATHINFO_EXTENSION));
-            $mime = $this->mimeType($ext);
-            
+            $ext      = strtolower(pathinfo($fullPath, PATHINFO_EXTENSION));
+            $mime     = $this->mimeType($ext);
+
             echo json_encode([
-                'name' => basename($fullPath),
-                'path' => $path,
-                'size' => filesize($fullPath),
-                'mime' => $mime,
-                'extension' => $ext,
-                'mtime' => date('Y-m-d H:i:s', filemtime($fullPath)),
+                'name'        => basename($fullPath),
+                'path'        => $path,
+                'size'        => filesize($fullPath),
+                'mime'        => $mime,
+                'extension'   => $ext,
+                'mtime'       => date('Y-m-d H:i:s', filemtime($fullPath)),
                 'permissions' => substr(sprintf('%o', fileperms($fullPath)), -4),
             ]);
-        } catch (\Exception $e) {
-            echo json_encode(['error' => 'Cannot get file info']);
+        } catch (\RuntimeException $e) {
+            http_response_code($e->getCode() ?: 500);
+            echo json_encode(['error' => $e->getCode() === 403 ? 'Access denied' : 'Cannot get file info']);
         }
     }
 
@@ -291,33 +294,33 @@ class Router
     {
         $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
         $map = [
-            'js' => 'javascript',
-            'ts' => 'typescript',
-            'jsx' => 'jsx',
-            'tsx' => 'tsx',
-            'php' => 'php',
-            'py' => 'python',
-            'rb' => 'ruby',
+            'js'   => 'javascript',
+            'ts'   => 'typescript',
+            'jsx'  => 'jsx',
+            'tsx'  => 'tsx',
+            'php'  => 'php',
+            'py'   => 'python',
+            'rb'   => 'ruby',
             'java' => 'java',
-            'c' => 'c',
-            'cpp' => 'cpp',
-            'cs' => 'csharp',
-            'go' => 'go',
-            'rs' => 'rust',
+            'c'    => 'c',
+            'cpp'  => 'cpp',
+            'cs'   => 'csharp',
+            'go'   => 'go',
+            'rs'   => 'rust',
             'html' => 'html',
-            'htm' => 'html',
-            'css' => 'css',
+            'htm'  => 'html',
+            'css'  => 'css',
             'scss' => 'scss',
             'less' => 'less',
             'json' => 'json',
-            'xml' => 'xml',
+            'xml'  => 'xml',
             'yaml' => 'yaml',
-            'yml' => 'yaml',
-            'sql' => 'sql',
-            'sh' => 'bash',
+            'yml'  => 'yaml',
+            'sql'  => 'sql',
+            'sh'   => 'bash',
             'bash' => 'bash',
-            'md' => 'markdown',
-            'txt' => 'plaintext',
+            'md'   => 'markdown',
+            'txt'  => 'plaintext',
         ];
         return $map[$ext] ?? 'plaintext';
     }

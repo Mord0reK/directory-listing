@@ -6,11 +6,13 @@ class DirScanner
 {
     private string $baseDir;
     private array  $hidden;
+    private array  $dotExceptions;
 
-    public function __construct(string $baseDir, array $hidden = [])
+    public function __construct(string $baseDir, array $hidden = [], array $dotExceptions = [])
     {
-        $this->baseDir = realpath($baseDir);
-        $this->hidden  = $hidden;
+        $this->baseDir       = realpath($baseDir);
+        $this->hidden        = $hidden;
+        $this->dotExceptions = $dotExceptions;
     }
 
     /**
@@ -32,6 +34,9 @@ class DirScanner
 
         foreach ($entries as $entry) {
             if (in_array($entry, $this->hidden, true)) {
+                continue;
+            }
+            if (str_starts_with($entry, '.') && !in_array($entry, $this->dotExceptions, true)) {
                 continue;
             }
 
@@ -58,12 +63,22 @@ class DirScanner
     }
 
     /**
-     * Resolves a request path safely, rejecting path traversal.
+     * Resolves a request path safely, rejecting path traversal and hidden files.
      */
     public function resolveSafe(string $requestPath): string
     {
-        // Strip leading slash, normalise separators
-        $clean    = ltrim(str_replace(['\\', "\0"], ['/', ''], $requestPath), '/');
+        $clean = ltrim(str_replace(['\\', "\0"], ['/', ''], $requestPath), '/');
+
+        foreach (explode('/', $clean) as $segment) {
+            if ($segment === '') continue;
+            if (in_array($segment, $this->hidden, true)) {
+                throw new \RuntimeException("Access denied: $requestPath", 403);
+            }
+            if (str_starts_with($segment, '.') && !in_array($segment, $this->dotExceptions, true)) {
+                throw new \RuntimeException("Access denied: $requestPath", 403);
+            }
+        }
+
         $fullPath = $this->baseDir . DIRECTORY_SEPARATOR . $clean;
         $real     = realpath($fullPath);
 
@@ -73,7 +88,7 @@ class DirScanner
 
         // Prevent escaping base_dir
         if (strncmp($real, $this->baseDir, strlen($this->baseDir)) !== 0) {
-            throw new \RuntimeException("Access denied: $requestPath");
+            throw new \RuntimeException("Access denied: $requestPath", 403);
         }
 
         return $real;

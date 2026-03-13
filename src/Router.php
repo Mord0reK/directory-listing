@@ -13,7 +13,7 @@ class Router
     public function __construct(array $config)
     {
         $this->config  = $config;
-        $this->scanner = new DirScanner($config['base_dir'], $config['hidden']);
+        $this->scanner = new DirScanner($config['base_dir'], $config['hidden'], $config['hidden_dot_exceptions'] ?? []);
         $this->md      = new MarkdownRenderer();
         $this->icons   = new IconResolver($config['icons_file'], $config['base_dir']);
         $this->tree    = new TreeBuilder($config['base_dir'], $config['hidden']);
@@ -58,7 +58,12 @@ class Router
         try {
             $safeFull = $this->scanner->resolveSafe($rawPath);
         } catch (\RuntimeException $e) {
-            $this->send404($e->getMessage());
+            if ($e->getCode() === 403) {
+                http_response_code(403);
+                echo '<h1>403 Forbidden</h1>';
+            } else {
+                $this->send404($e->getMessage());
+            }
             return;
         }
 

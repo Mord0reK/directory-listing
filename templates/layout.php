@@ -35,12 +35,16 @@
             <button id="modal-close" class="text-muted hover:text-heading transition-colors text-lg leading-none" aria-label="Zamknij">&times;</button>
         </div>
         <!-- Body -->
-        <div id="modal-body" class="overflow-y-auto flex-1 p-6">
+        <div id="modal-body" class="overflow-y-auto flex-1 p-6 min-h-[500px]">
         </div>
     </div>
 </div>
 <script>
 (function () {
+    window.openPreview = openPreview;
+    window.openInfo = openInfo;
+    window.doDownload = doDownload;
+
     // ── Dropdown logic ───────────────────────────────────────────────
     let openDropdown = null;
 
@@ -68,14 +72,13 @@
             return;
         }
 
-        // Action buttons inside dropdown
+        // Action buttons inside dropdown or direct button clicks
         const download = e.target.closest('.action-download');
         const preview  = e.target.closest('.action-preview');
         const info     = e.target.closest('.action-info');
 
         if (download || preview || info) {
-            const wrap = e.target.closest('.dropdown-wrap');
-            const btn  = wrap.querySelector('.dropdown-trigger');
+            const btn = download || preview || info;
             const path = btn.dataset.path;
             const name = btn.dataset.name;
             closeDropdown();
@@ -132,7 +135,7 @@
     }
 
     async function openPreview(path, name) {
-        openModal(name, '<p class="text-muted text-sm animate-pulse">Ładowanie…</p>');
+        openModal(name, '<div class="flex items-center justify-center h-[468px]"><div class="flex items-center gap-3 text-muted"><i class="bi bi-arrow-repeat animate-spin text-xl"></i><span>Ładowanie…</span></div></div>');
         try {
             const res  = await fetch('/?action=preview&path=' + encodeURIComponent(path));
             const data = await res.json();
@@ -140,17 +143,69 @@
                 modalBody.innerHTML = '<p class="text-red-400 text-sm">' + escHtml(data.error) + '</p>';
                 return;
             }
+            
+            const actionsDiv = document.createElement('div');
+            actionsDiv.className = 'flex items-center justify-between mb-3';
+            
+            const meta = document.createElement('p');
+            meta.className = 'text-[10px] text-muted font-mono';
+            meta.textContent = data.lines + ' linii · ' + formatBytes(data.size) + ' · ' + data.language;
+            
+            const buttonsDiv = document.createElement('div');
+            buttonsDiv.className = 'flex items-center gap-2';
+            
+            const copyBtn = document.createElement('button');
+            copyBtn.className = 'inline-flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-muted bg-bg-hover hover:text-heading border border-border hover:border-accent rounded-lg transition-all';
+            copyBtn.innerHTML = '<i class="bi bi-clipboard"></i>Kopiuj';
+            copyBtn.onclick = async function() {
+                try {
+                    if (navigator.clipboard && window.isSecureContext) {
+                        await navigator.clipboard.writeText(data.content);
+                    } else {
+                        const textArea = document.createElement("textarea");
+                        textArea.value = data.content;
+                        textArea.style.position = "fixed";
+                        textArea.style.left = "-9999px";
+                        document.body.appendChild(textArea);
+                        textArea.select();
+                        document.execCommand("copy");
+                        document.body.removeChild(textArea);
+                    }
+                    copyBtn.innerHTML = '<i class="bi bi-check2 text-green-400"></i><span class="text-green-400">Skopiowano</span>';
+                    copyBtn.className = 'inline-flex items-center gap-2 px-3 py-1.5 text-xs font-medium bg-green-400/10 border border-green-400/30 rounded-lg transition-all';
+                    setTimeout(() => {
+                        copyBtn.innerHTML = '<i class="bi bi-clipboard"></i>Kopiuj';
+                        copyBtn.className = 'inline-flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-muted bg-bg-hover hover:text-heading border border-border hover:border-accent rounded-lg transition-all';
+                    }, 2000);
+                } catch (err) {
+                    copyBtn.innerHTML = '<i class="bi bi-x-lg"></i>Błąd';
+                    setTimeout(() => {
+                        copyBtn.innerHTML = '<i class="bi bi-clipboard"></i>Kopiuj';
+                    }, 2000);
+                }
+            };
+            
+            const downloadBtn = document.createElement('a');
+            downloadBtn.href = '/?action=download&path=' + encodeURIComponent(path);
+            downloadBtn.download = '';
+            downloadBtn.className = 'inline-flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-muted bg-bg-hover hover:text-heading border border-border hover:border-accent rounded-lg transition-all';
+            downloadBtn.innerHTML = '<i class="bi bi-download"></i>Pobierz';
+            
+            buttonsDiv.appendChild(copyBtn);
+            buttonsDiv.appendChild(downloadBtn);
+            
+            actionsDiv.appendChild(meta);
+            actionsDiv.appendChild(buttonsDiv);
+            
             const pre  = document.createElement('pre');
             const code = document.createElement('code');
             code.className = 'language-' + data.language;
             code.textContent = data.content;
             pre.appendChild(code);
-            pre.className = '!m-0 !p-0 !bg-transparent !border-none overflow-x-auto text-xs';
-            const meta = document.createElement('p');
-            meta.className = 'text-[10px] text-muted mb-3 font-mono';
-            meta.textContent = data.lines + ' linii · ' + formatBytes(data.size) + ' · ' + data.language;
+            pre.className = '!m-0 !p-4 !bg-zinc-900 !border-none overflow-auto text-xs rounded-lg h-full';
+            
             modalBody.innerHTML = '';
-            modalBody.appendChild(meta);
+            modalBody.appendChild(actionsDiv);
             modalBody.appendChild(pre);
             hljs.highlightElement(code);
         } catch (err) {

@@ -33,6 +33,7 @@
                     <tr class="border-b border-border text-muted text-[10px] uppercase tracking-widest font-semibold">
                         <th class="w-8 pb-3 text-left" aria-hidden="true"></th>
                         <th class="pb-3 text-left">Nazwa</th>
+                        <th class="w-8 pb-3 text-left" aria-hidden="true"></th>
                         <th class="pb-3 text-right w-24 hidden sm:table-cell font-mono">Rozmiar</th>
                         <th class="pb-3 text-right w-44 hidden md:table-cell font-mono">Ostatnia modyfikacja</th>
                     </tr>
@@ -45,19 +46,31 @@
                             $sizeStr = $entry['isDir'] ? '—' : formatBytes($entry['size']);
                             $dateStr = date('Y-m-d H:i', $entry['mtime']);
                         ?>
-                        <tr class="hover:bg-bg-hover transition-all duration-200 group relative cursor-pointer" onclick="window.location='<?= htmlspecialchars($href) ?>'">
-                            <td class="py-2.5 pr-2" aria-hidden="true">
+                        <tr class="hover:bg-bg-hover transition-all duration-200 group relative">
+                            <td class="py-2.5 pr-2 cursor-pointer" onclick="window.location='<?= htmlspecialchars($href) ?>'">
                                 <?= $entry['icon'] ?>
                             </td>
-                            <td class="py-2.5">
+                            <td class="py-2.5 cursor-pointer" onclick="window.location='<?= htmlspecialchars($href) ?>'">
                                 <span class="text-base group-hover:text-heading transition-colors <?= $entry['isDir'] ? 'font-semibold' : '' ?>">
                                     <?= htmlspecialchars($entry['name']) ?>
                                 </span>
                             </td>
-                            <td class="py-2.5 text-right text-muted hidden sm:table-cell font-mono text-[11px]">
+                            <td class="py-2.5 text-center">
+                                <?php if (!$entry['isDir']): ?>
+                                    <button type="button" 
+                                            class="action-preview inline-flex items-center justify-center w-8 h-8 text-green-400 hover:text-green-300 bg-bg-hover hover:bg-green-400/20 border border-border hover:border-green-400 rounded-lg transition-all duration-200 cursor-pointer"
+                                            data-path="<?= htmlspecialchars($entryPath) ?>"
+                                            data-name="<?= htmlspecialchars($entry['name']) ?>"
+                                            title="View code"
+                                            onclick="event.stopPropagation(); openPreview(this.dataset.path, this.dataset.name);">
+                                        <i class="bi bi-code-slash"></i>
+                                    </button>
+                                <?php endif; ?>
+                            </td>
+                            <td class="py-2.5 text-right text-muted hidden sm:table-cell font-mono text-[11px] cursor-pointer" onclick="window.location='<?= htmlspecialchars($href) ?>'">
                                 <?= $sizeStr ?>
                             </td>
-                            <td class="py-2.5 text-right text-zinc-500 hidden md:table-cell text-[11px] font-mono">
+                            <td class="py-2.5 text-right text-zinc-500 hidden md:table-cell text-[11px] font-mono cursor-pointer" onclick="window.location='<?= htmlspecialchars($href) ?>'">
                                 <?= $dateStr ?>
                             </td>
                         </tr>

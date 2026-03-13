@@ -24,6 +24,25 @@ class Router
         $requestUri = $_SERVER['REQUEST_URI'] ?? '/';
         $requestUri = parse_url($requestUri, PHP_URL_PATH);
 
+        // Handle action endpoints (preview, download, info)
+        if (isset($_GET['action'])) {
+            $action = $_GET['action'];
+            $path = $_GET['path'] ?? '';
+            
+            switch ($action) {
+                case 'preview':
+                    $this->handlePreview($path);
+                    break;
+                case 'download':
+                    $this->handleDownload($path);
+                    break;
+                case 'info':
+                    $this->handleInfo($path);
+                    break;
+            }
+            return;
+        }
+
         // Handle webhook endpoint
         if ($requestUri === '/_webhook/git-pull' && $_SERVER['REQUEST_METHOD'] === 'POST') {
             (new WebhookHandler($this->config))->handle();
@@ -199,5 +218,107 @@ class Router
             'php'  => 'application/x-httpd-php',
         ];
         return $map[$ext] ?? 'application/octet-stream';
+    }
+
+    private function handlePreview(string $path): void
+    {
+        header('Content-Type: application/json');
+        try {
+            $fullPath = $this->scanner->resolveSafe($path);
+            if (is_dir($fullPath)) {
+                echo json_encode(['error' => 'Cannot preview directories']);
+                return;
+            }
+            $content = file_get_contents($fullPath);
+            $language = $this->getLanguageFromExtension($fullPath);
+            $size = filesize($fullPath);
+            $lines = count(explode("\n", $content));
+            
+            echo json_encode([
+                'content' => $content,
+                'language' => $language,
+                'size' => $size,
+                'lines' => $lines
+            ]);
+        } catch (\Exception $e) {
+            echo json_encode(['error' => 'Cannot read file']);
+        }
+    }
+
+    private function handleDownload(string $path): void
+    {
+        try {
+            $fullPath = $this->scanner->resolveSafe($path);
+            if (is_dir($fullPath)) {
+                http_response_code(400);
+                exit;
+            }
+            $ext = strtolower(pathinfo($fullPath, PATHINFO_EXTENSION));
+            $mime = $this->mimeType($ext);
+            header('Content-Type: ' . $mime);
+            header('Content-Length: ' . filesize($fullPath));
+            header('Content-Disposition: attachment; filename="' . basename($fullPath) . '"');
+            readfile($fullPath);
+        } catch (\Exception $e) {
+            http_response_code(404);
+        }
+        exit;
+    }
+
+    private function handleInfo(string $path): void
+    {
+        header('Content-Type: application/json');
+        try {
+            $fullPath = $this->scanner->resolveSafe($path);
+            $ext = strtolower(pathinfo($fullPath, PATHINFO_EXTENSION));
+            $mime = $this->mimeType($ext);
+            
+            echo json_encode([
+                'name' => basename($fullPath),
+                'path' => $path,
+                'size' => filesize($fullPath),
+                'mime' => $mime,
+                'extension' => $ext,
+                'mtime' => date('Y-m-d H:i:s', filemtime($fullPath)),
+                'permissions' => substr(sprintf('%o', fileperms($fullPath)), -4),
+            ]);
+        } catch (\Exception $e) {
+            echo json_encode(['error' => 'Cannot get file info']);
+        }
+    }
+
+    private function getLanguageFromExtension(string $path): string
+    {
+        $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
+        $map = [
+            'js' => 'javascript',
+            'ts' => 'typescript',
+            'jsx' => 'jsx',
+            'tsx' => 'tsx',
+            'php' => 'php',
+            'py' => 'python',
+            'rb' => 'ruby',
+            'java' => 'java',
+            'c' => 'c',
+            'cpp' => 'cpp',
+            'cs' => 'csharp',
+            'go' => 'go',
+            'rs' => 'rust',
+            'html' => 'html',
+            'htm' => 'html',
+            'css' => 'css',
+            'scss' => 'scss',
+            'less' => 'less',
+            'json' => 'json',
+            'xml' => 'xml',
+            'yaml' => 'yaml',
+            'yml' => 'yaml',
+            'sql' => 'sql',
+            'sh' => 'bash',
+            'bash' => 'bash',
+            'md' => 'markdown',
+            'txt' => 'plaintext',
+        ];
+        return $map[$ext] ?? 'plaintext';
     }
 }

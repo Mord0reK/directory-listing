@@ -54,7 +54,7 @@ class IconResolver
         }
 
         if ($isDir) {
-            return $this->renderIcon($this->config['defaults']['directory'] ?? 'bi-folder-fill');
+            return $this->renderIcon($this->config['defaults']['directory'] ?? 'folder.svg');
         }
 
         $ext = strtolower(pathinfo($name, PATHINFO_EXTENSION));
@@ -63,13 +63,63 @@ class IconResolver
             return $this->renderIcon($this->config['extensions'][$ext]);
         }
 
-        return $this->renderIcon($this->config['defaults']['file'] ?? 'bi-file-earmark');
+        return $this->renderIcon($this->config['defaults']['file'] ?? 'file.svg');
     }
 
     private function renderIcon(string $icon): string
     {
-        if (preg_match('/^bi-/', $icon)) {
-            return '<i class="bi ' . htmlspecialchars($icon) . ' file-icon" style="font-size: 18px; line-height: 18px;"></i>';
+        $cacheBust = '?v=' . time();
+        
+        // Map vscode-icons naming to actual SVG file names
+        $iconMap = [
+            'vscode-folder' => 'default_folder',
+            'vscode-markdown' => 'file_type_markdown',
+            'vscode-document' => 'file_type_document',
+            'vscode-pdf' => 'file_type_pdf',
+            'vscode-php' => 'file_type_php',
+            'vscode-javascript' => 'file_type_javascript',
+            'vscode-typescript' => 'file_type_typescript',
+            'vscode-css' => 'file_type_css',
+            'vscode-sass' => 'file_type_sass',
+            'vscode-less' => 'file_type_less',
+            'vscode-html' => 'file_type_html',
+            'vscode-json' => 'file_type_json',
+            'vscode-xml' => 'file_type_xml',
+            'vscode-yaml' => 'file_type_yaml',
+            'vscode-shell' => 'file_type_shell',
+            'vscode-python' => 'file_type_python',
+            'vscode-ruby' => 'file_type_ruby',
+            'vscode-go' => 'file_type_go',
+            'vscode-rust' => 'file_type_rust',
+            'vscode-java' => 'file_type_java',
+            'vscode-c' => 'file_type_c',
+            'vscode-cpp' => 'file_type_cpp',
+            'vscode-database' => 'file_type_sql',
+            'vscode-image' => 'file_type_image',
+            'vscode-zip' => 'file_type_zip',
+            'vscode-dotenv' => 'file_type_dotenv',
+            'vscode-log' => 'file_type_log',
+            'vscode-csv' => 'file_type_csv',
+            'vscode-excel' => 'file_type_excel',
+            'vscode-word' => 'file_type_word',
+            'vscode-powerpoint' => 'file_type_powerpoint',
+            'vscode-exe' => 'file_type_exe',
+            'vscode-dll' => 'file_type_dll',
+            'vscode-iso' => 'file_type_iso',
+            'vscode-audio' => 'file_type_audio',
+            'vscode-video' => 'file_type_video',
+            'vscode-git' => 'file_type_git',
+            'vscode-docker' => 'file_type_docker',
+            'vscode-lock' => 'file_type_lock',
+            'vscode-gradle' => 'file_type_gradle',
+            'vscode-maven' => 'file_type_maven',
+            'vscode-default' => 'default_file',
+        ];
+        
+        if (preg_match('/^vscode-/', $icon)) {
+            $fileName = $iconMap[$icon] ?? 'default_file';
+            $url = "https://raw.githubusercontent.com/vscode-icons/vscode-icons/master/icons/{$fileName}.svg" . $cacheBust;
+            return '<img src="' . htmlspecialchars($url) . '" width="24" height="24" class="file-icon" aria-hidden="true">';
         }
 
         if (preg_match('/^<svg/', $icon)) {
@@ -77,10 +127,12 @@ class IconResolver
         }
 
         if (preg_match('/\.(svg|png|jpe?g|gif|webp|ico)$/i', $icon)) {
-            return '<img src="' . htmlspecialchars($this->resolveIconPath($icon)) . '" width="18" height="18" class="file-icon" aria-hidden="true" alt="">';
+            return '<img src="' . htmlspecialchars($this->resolveIconPath($icon)) . '" width="24" height="24" class="file-icon" aria-hidden="true" alt="">';
         }
 
-        return '<i class="bi bi-file-earmark file-icon" style="font-size: 18px; line-height: 18px;"></i>';
+        // Default fallback to vscode folder icon
+        $url = "https://raw.githubusercontent.com/vscode-icons/vscode-icons/master/icons/default_file.svg" . $cacheBust;
+        return '<img src="' . htmlspecialchars($url) . '" width="20" height="20" class="file-icon" aria-hidden="true">';
     }
 
     private function resolveIconPath(string $icon): string

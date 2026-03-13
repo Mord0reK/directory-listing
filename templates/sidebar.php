@@ -8,7 +8,7 @@
     <div class="px-4 py-4 border-b border-border-subtle group">
         <a href="/" class="flex items-center gap-3 text-base font-bold transition-all duration-300 text-heading hover:text-accent">
             <div class="flex items-center justify-center w-8 h-8 transition-transform rounded-lg shadow-lg bg-accent text-zinc-950 group-hover:scale-110">
-                <?= $folderIcon ?? '<i class="bi bi-folder-fill"></i>' ?>
+                <?= $folderIcon ?>
             </div>
             <span class="tracking-tight truncate"><?= htmlspecialchars($siteName) ?></span>
         </a>
@@ -43,7 +43,7 @@ function renderTreeNodes(array $nodes, string $requestPath): void
     foreach ($nodes as $node) {
         $isActive = $node['active'];
         $hasChildren = !empty($node['children']);
-        $nodeIcon = $node['icon'] ?? '<i class="bi bi-folder file-icon" style="font-size: 18px; line-height: 18px;"></i>';
+        $nodeIcon = $node['icon'] ?? '';
 
         $baseClass = 'flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-left transition-all duration-300 group/item relative';
         $itemClass = $baseClass . ' text-muted hover:bg-bg-hover hover:text-heading';
@@ -55,18 +55,15 @@ function renderTreeNodes(array $nodes, string $requestPath): void
             $isActiveIndicator = '';
         }
 
-        echo '<li class="relative">';
-        echo $isActiveIndicator;
+        echo '<li>';
         
         if ($hasChildren) {
             $open = $node['open'] ? ' open' : '';
             echo '<details' . $open . ' class="group/details">';
             echo '<summary class="list-none outline-none cursor-pointer">';
             echo '<div class="flex items-center">';
-            echo '<a href="' . htmlspecialchars('/' . $node['path']) . '" class="' . $itemClass . ' flex-1">';
-            echo $nodeIcon;
-            echo '<span class="truncate">' . htmlspecialchars($node['name']) . '</span>';
-            echo '</a>';
+            $linkContent = $isActiveIndicator . $nodeIcon . '<span class="truncate">' . htmlspecialchars($node['name']) . '</span>';
+            echo '<a href="' . htmlspecialchars('/' . $node['path']) . '" class="' . $itemClass . ' flex-1">' . $linkContent . '</a>';
             echo '<div class="absolute transition-transform duration-300 -translate-y-1/2 pointer-events-none right-4 top-1/2 group-open/details:rotate-90 opacity-40">';
             echo '<svg width="8" height="8" viewBox="0 0 8 8" fill="none" class="text-zinc-500"><path d="M2.5 1.5L4.5 3.5L2.5 5.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
             echo '</div>';
@@ -77,10 +74,8 @@ function renderTreeNodes(array $nodes, string $requestPath): void
             echo '</div>';
             echo '</details>';
         } else {
-            echo '<a href="' . htmlspecialchars('/' . $node['path']) . '" class="' . $itemClass . '">';
-            echo $nodeIcon;
-            echo '<span class="truncate">' . htmlspecialchars($node['name']) . '</span>';
-            echo '</a>';
+            $linkContent = $isActiveIndicator . $nodeIcon . '<span class="truncate">' . htmlspecialchars($node['name']) . '</span>';
+            echo '<a href="' . htmlspecialchars('/' . $node['path']) . '" class="' . $itemClass . '">' . $linkContent . '</a>';
         }
         echo '</li>';
     }

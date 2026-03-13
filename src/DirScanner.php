@@ -6,11 +6,13 @@ class DirScanner
 {
     private string $baseDir;
     private array  $hidden;
+    private array $dotExceptions;
 
-    public function __construct(string $baseDir, array $hidden = [])
+    public function __construct(string $baseDir, array $hidden = [], array $dotExceptions = [])
     {
-        $this->baseDir = realpath($baseDir);
-        $this->hidden  = $hidden;
+        $this->baseDir       = realpath($baseDir);
+        $this->hidden        = $hidden;
+        $this->dotExceptions = $dotExceptions;
     }
 
     /**

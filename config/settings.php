@@ -10,7 +10,8 @@ $iconsFile = (is_file($customIconsFile) && is_readable($customIconsFile))
 return [
     'base_dir'   => __DIR__ . '/../content',
     'site_name'  => 'Directory Listing',
-    'hidden'     => ['.', '..', '.git', '.gitignore', '.htaccess', '.dir.json'],
+    'hidden'     => ['.', '..', '.dir.json'],
+    'hidden_dot_exceptions' => ['.github'],
     'icons_file' => $iconsFile,
     'webhook_token' => $_ENV['WEBHOOK_TOKEN'] ?? $_SERVER['WEBHOOK_TOKEN'] ?? '',
 ];

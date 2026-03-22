@@ -1,6 +1,7 @@
 services:
   app:
-    image: ghcr.io/mord0rek/directory-listing:latest
+    build: .
+#    image: ghcr.io/mord0rek/directory-listing:latest
     ports:
       - "8080:80"
     volumes:

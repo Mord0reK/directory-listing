@@ -13,13 +13,16 @@ fi
 
 chmod 666 "$TARGET_CONFIG" 2>/dev/null || true
 
-CONTENT_DIR="/var/www/html/content"
-if [ -d "$CONTENT_DIR" ]; then
-    for dir in "$CONTENT_DIR"/*; do
-        if [ -d "$dir" ]; then
+# Make bind-mounted directories writable.
+# Only chown if root-owned (Docker auto-created), otherwise preserve host ownership.
+# chmod 777 ensures www-data can write regardless of ownership.
+for dir in /var/www/html/content /var/www/html/assets/icons/custom; do
+    if [ -d "$dir" ]; then
+        if [ "$(stat -c %u "$dir")" = "0" ]; then
             chown -R www-data:www-data "$dir"
         fi
-    done
-fi
+        chmod -R 777 "$dir"
+    fi
+done
 
 exec "$@"

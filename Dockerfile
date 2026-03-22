@@ -51,9 +51,6 @@ RUN mkdir -p content && chown -R www-data:www-data content
 COPY docker-entrypoint.sh /usr/local/bin/directory-listing-entrypoint
 RUN chmod +x /usr/local/bin/directory-listing-entrypoint
 
-# Fix permissions
-RUN chown -R www-data:www-data /var/www/html
-
 ENTRYPOINT ["directory-listing-entrypoint"]
 CMD ["apache2-foreground"]
 
